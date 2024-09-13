@@ -1,8 +1,7 @@
 #include <PID_v1.h>
 
 const int pwmPin = 25;
-const int pino_sensor = 34;  // Pino do sensor de obstáculo
-const int inputPin = 32;     // Escolha o pino que está usando (por exemplo, 32)
+const int pino_sensor = 34;  
 
 const int helices = 9;             // Número de hélices do cooler
 volatile int mudancas_estado = 0;  // Variável que será usada na interrupção
@@ -10,6 +9,7 @@ volatile int mudancas_estado = 0;  // Variável que será usada na interrupção
 unsigned long tempo_inicial = 0;  // Para armazenar o tempo inicial
 unsigned long tempo_serial = 0;   // Para armazenar o tempo plotar serial
 unsigned long intervalo = 1000;   // Intervalo de 1 segundo (em milissegundos)
+int valorSetPoint = 300;
 
 volatile float rpm;
 
@@ -41,9 +41,8 @@ void setup() {
   SetPoint = 100;
 
   //CONFIGURAÇÃO DE PWM
-  ledcSetup(0, 10000, 8);
+  ledcSetup(0, 1000, 8);
   ledcAttachPin(25, 0);
-  pinMode(inputPin, INPUT);  // Configura o pino como entrada
 
   //DEFINE PINO DE LEITURA DO POTENCIOMETRO
   pinMode(pino_sensor, INPUT);  // Configura o pino como entrada
@@ -56,24 +55,33 @@ void setup() {
 }
 
 void loop() {
+  if (Serial.available() > 0) {
+    int recebido = Serial.parseInt();
+    if (recebido > 0 && recebido <= 1023) { // Verifique se o valor está dentro do intervalo esperado
+        if(recebido == 0){
+          Serial.println(recebido);
+        }
+        valorSetPoint = recebido;
+        //Serial.println(recebido);
+    }
+
+    
+}
+
   // Verifica se já se passou 1 segundo
   if (millis() - tempo_inicial >= 100) {
     // Calcula o RPM
     float rotacoes_por_segundo = (float)mudancas_estado / helices;  // Número de rotações completas por segundo
     rpm = rotacoes_por_segundo * 60 * 10 ;                    // Converte para rotações por minuto
 
-    // Serial.println(rpm);
     // Reseta o contador e o tempo
     mudancas_estado = 0;
     tempo_inicial = millis();  // Atualiza o tempo inicial
   }
-  //sensor vai ser input
 
   Input = rpm ;
 
-  //potencimetro vai ser o meu desejo
-  int pinValue = analogRead(inputPin) ;  // Lê o valor do pino
-  SetPoint = pinValue;
+  SetPoint = valorSetPoint;
 
   
   myPID.Compute();
